@@ -23,6 +23,7 @@ import java.util.List;
 public class FlickrFetchr {
     private static final String TAG = "FlickrFetchr";
     private static final String API_KEY = "75ec99e963baeaa6cd8f389f92a545cb";
+    private static int page = 1;
 
     public byte[] getUrlBytes(String urlSpec) throws IOException {
         URL url = new URL(urlSpec);
@@ -52,7 +53,7 @@ public class FlickrFetchr {
         return new String(getUrlBytes(urlSpec));
     }
 
-    public List<GalleryItem> fetchItems(){
+    public List<GalleryItem> fetchItems(String pageNumber){
         List<GalleryItem> items = new ArrayList<>();
 
         try{
@@ -60,12 +61,13 @@ public class FlickrFetchr {
                     .buildUpon()
                     .appendQueryParameter("method","flickr.photos.getRecent")
                     .appendQueryParameter("api_key",API_KEY)
+                    .appendQueryParameter("page",pageNumber)
                     .appendQueryParameter("format","json")
                     .appendQueryParameter("nojsoncallback","1")
                     .appendQueryParameter("extras","url_s")
                     .build().toString();
             String jsonString = getUrlString(url);
-            Log.i(TAG, "Recieved JSON: " + jsonString);
+            Log.i(TAG, "Received JSON: " + jsonString);
             JSONObject jsonBody = new JSONObject(jsonString);
             //parseItems(items,jsonBody);
             parseItemGson(items,jsonBody);
@@ -79,34 +81,17 @@ public class FlickrFetchr {
         return items;
     }
 
-    private void parseItems(List<GalleryItem> items, JSONObject jsonBody) throws JSONException {
-        JSONObject photosJsonObject = jsonBody.getJSONObject("photos");
-        JSONArray photojsonArray = photosJsonObject.getJSONArray("photo");
-
-        for (int i = 0; i < photojsonArray.length(); i++){
-            JSONObject photoJsonObject = photojsonArray.getJSONObject(i);
-
-            GalleryItem item = new GalleryItem();
-            item.setmId(photoJsonObject.getString("id"));
-            item.setmCaption(photoJsonObject.getString("title"));
-
-            if(!photoJsonObject.has("url_s")){
-                continue;
-            }
-            item.setmURL(photoJsonObject.getString("url_s"));
-            items.add(item);
-        }
-    }
-
     private void parseItemGson(List<GalleryItem> items, JSONObject jsonBody) throws JSONException {
         Gson gson = new Gson();
 
         JSONObject photosJsonObject = jsonBody.getJSONObject("photos");
-        String photojsonArray = photosJsonObject.getJSONArray("photo").toString();
+        String photoJsonArray = photosJsonObject.getJSONArray("photo").toString();
         //создаю тип данных дре преобразования из json в list<GalleryItem>
         Type type = new TypeToken<ArrayList<GalleryItem>>(){}.getType();
-        List<GalleryItem> galleryItems = gson.fromJson(photojsonArray,type);
+        List<GalleryItem> galleryItems = gson.fromJson(photoJsonArray,type);
         items.addAll(galleryItems);
         }
+
+
     }
 
