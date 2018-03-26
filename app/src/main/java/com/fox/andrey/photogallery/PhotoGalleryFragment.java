@@ -1,6 +1,7 @@
 package com.fox.andrey.photogallery;
 
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
@@ -17,6 +18,7 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,7 +32,6 @@ public class PhotoGalleryFragment extends Fragment {
     private static int page = 1;
 
 
-
     public static PhotoGalleryFragment newInstance() {
         return newInstance();
     }
@@ -38,10 +39,11 @@ public class PhotoGalleryFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Log.i(TAG, "Fragment onCreate");
-        //удерживаю фрагмент
+        Log.i(TAG, "onCreate ");
+        //hold fragment
         setRetainInstance(true);
-        //выполняю загрузку данных в фоне
+
+        //get data in background
         new FetchItemTask().execute();
 
         Handler responseHandler = new Handler();
@@ -58,10 +60,11 @@ public class PhotoGalleryFragment extends Fragment {
         Log.i(TAG, "Background thread started");
     }
 
+
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-         final View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
+        final View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         mPhotoRecyclerView = v.findViewById(R.id.photo_recycler_view);
         //динамическое обновление кол-ва колонок в зависимости от ширины дисплея
         mPhotoRecyclerView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
@@ -70,7 +73,7 @@ public class PhotoGalleryFragment extends Fragment {
                 int spanCount = 2;
                 int width = getView().getWidth();
                 if (width > 1000) spanCount = 3;
-                else if (width > 1800) spanCount =4;
+                if (width > 1600) spanCount = 4;
                 mPhotoRecyclerView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
                 mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), spanCount));
             }
@@ -78,11 +81,16 @@ public class PhotoGalleryFragment extends Fragment {
 
         //прослушка для добавления новой партии фотографий при достижении последнего пункта списка
         mPhotoRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+
+
+
             @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                GridLayoutManager layoutManager = ((GridLayoutManager) mPhotoRecyclerView.getLayoutManager());
                 super.onScrolled(recyclerView, dx, dy);
-                //если последняя строчка списка
-                if (!mPhotoRecyclerView.canScrollVertically(1) && loadingAvailable) {
+                //если сумма последней видимой позиции и всех видимых позиций больше общего количества позиций, то гружу следующую страницу
+                if (layoutManager.findLastVisibleItemPosition() + layoutManager.getChildCount() >= layoutManager.getItemCount()
+                        && loadingAvailable) {
                     loadingAvailable = false;
                     Log.i(TAG, "Last item of list");
                     pageIncrement();
@@ -90,6 +98,8 @@ public class PhotoGalleryFragment extends Fragment {
                     new FetchItemTask().execute();
                 }
             }
+
+
         });
 
         setupAdapter();
@@ -103,14 +113,11 @@ public class PhotoGalleryFragment extends Fragment {
 
     }
 
+
     private void setupAdapter() {
         //если фрагмент присоединен к активности
         if (isAdded()) {
-
-            Log.i(TAG, "adapter status is:" + mPhotoRecyclerView.getAdapter());
             mPhotoRecyclerView.setAdapter(new PhotoAdapter(mItems));
-            Log.i(TAG, "new adapter was created");
-            //}else mPhotoRecyclerView.getAdapter().notifyDataSetChanged();
         }
     }
 
@@ -146,7 +153,6 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(PhotoHolder holder, int position) {
-            Log.i(TAG, "Position is:" + position);
             GalleryItem item = mGalleryItem.get(position);
             Drawable placeHolder = getResources().getDrawable(R.mipmap.no_image);
             holder.bindDrawable(placeHolder);
@@ -168,9 +174,13 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         protected void onPostExecute(List<GalleryItem> galleryItems) {
-            mItems.addAll(galleryItems);
-            //setupAdapter();
-            mPhotoRecyclerView.getAdapter().notifyDataSetChanged();
+            for (int i = 0; i < galleryItems.size(); i++){
+                GalleryItem item = galleryItems.get(i);
+                mItems.add(item);
+                mPhotoRecyclerView.getAdapter().notifyItemChanged(mItems.size()-1);
+                new Thread(() -> downloadToCache(item.getmURL())).start();
+            }
+
             loadingAvailable = true;
         }
     }
@@ -189,5 +199,21 @@ public class PhotoGalleryFragment extends Fragment {
 
     private String getPage() {
         return String.valueOf(page);
+    }
+
+    private void downloadToCache (String url){
+        try {
+            if (url == null) {
+                return;
+            }
+            if (Cache.getInstance().getLru().get(url) == null) {
+                byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(url);
+                Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+                Cache.getInstance().getLru().put(url, bitmap);
+                Log.i(TAG, "Download to cache");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
