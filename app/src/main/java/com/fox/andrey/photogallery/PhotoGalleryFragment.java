@@ -127,7 +127,12 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         protected List<GalleryItem> doInBackground(Void... voids) {
-            return new FlickrFetchr().fetchItems();
+        String query = null;
+        if (query == null){
+            return new FlickrFetchr().getchRecentPhotos();
+        }else {
+            return new FlickrFetchr().searchPhotos(query);
+        }
         }
 
         @Override
