@@ -81,9 +81,6 @@ public class PhotoGalleryFragment extends Fragment {
 
         //прослушка для добавления новой партии фотографий при достижении последнего пункта списка
         mPhotoRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-
-
-
             @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
                 GridLayoutManager layoutManager = ((GridLayoutManager) mPhotoRecyclerView.getLayoutManager());
@@ -169,7 +166,13 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         protected List<GalleryItem> doInBackground(Void... voids) {
-            return new FlickrFetchr().fetchItems(getPage());
+            String query = "robots";
+
+            if (query == null){
+               return new FlickrFetchr().fetchRecentPhoto();
+            }else {
+               return new FlickrFetchr().searchPhotos(query);
+            }
         }
 
         @Override
@@ -178,7 +181,7 @@ public class PhotoGalleryFragment extends Fragment {
                 GalleryItem item = galleryItems.get(i);
                 mItems.add(item);
                 mPhotoRecyclerView.getAdapter().notifyItemChanged(mItems.size()-1);
-                new Thread(() -> downloadToCache(item.getmURL())).start();
+                //new Thread(() -> downloadToCache(item.getmURL())).start();
             }
 
             loadingAvailable = true;
