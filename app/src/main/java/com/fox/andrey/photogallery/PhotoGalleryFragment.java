@@ -13,10 +13,15 @@ import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.ImageView;
+import android.support.v7.widget.SearchView;
+import android.widget.ProgressBar;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,6 +33,7 @@ public class PhotoGalleryFragment extends Fragment {
     private RecyclerView mPhotoRecyclerView;
     private List<GalleryItem> mItems = new ArrayList<>();
     private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
+    private ProgressBar progressBar;
     private boolean loadingAvailable = true;
     private static int page = 1;
 
@@ -39,12 +45,14 @@ public class PhotoGalleryFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Log.i(TAG, "onCreate ");
+
+
+        Log.d(TAG, "onCreate Fragment");
         //hold fragment
         setRetainInstance(true);
+        //menu get callback
+        setHasOptionsMenu(true);
 
-        //get data in background
-        new FetchItemTask().execute();
 
         Handler responseHandler = new Handler();
         mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
@@ -58,13 +66,90 @@ public class PhotoGalleryFragment extends Fragment {
         mThumbnailDownloader.start();
         mThumbnailDownloader.getLooper();
         Log.i(TAG, "Background thread started");
+
+
     }
 
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_photo_gallery, menu);
+
+        MenuItem searchItem = menu.findItem(R.id.menu_item_search);
+        SearchView searchView = (SearchView) searchItem.getActionView();
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                Log.d(TAG, "QueryTextSubmit " + query);
+                QueryPreferences.setStoredQuery(getActivity(), query);
+                updateItems();
+                searchView.setIconified(true);
+                searchView.clearFocus();
+
+                //включаю показ процеса загрузки
+                //progressBar.setVisibility(ProgressBar.VISIBLE);
+
+                //удаляю данные по старому запросу
+                mItems.clear();
+
+                //оповещаю адаптер
+                mPhotoRecyclerView.getAdapter().notifyDataSetChanged();
+
+
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                //Log.d(TAG, "QueryTextChange: " + newText);
+                return false;
+            }
+        });
+
+        searchView.setOnSearchClickListener(v -> {
+            String query = QueryPreferences.getStoredQuery(getActivity());
+            searchView.setQuery(query, false);
+
+
+        });
+    }
+
+    /*Каждый раз, когда пользователь выбирает элемент Clear Search в дополнительном
+    меню, стирайте сохраненный запрос (присваиванием ему null)*/
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_item_clear:
+                QueryPreferences.setStoredQuery(getActivity(), null);
+                updateItems();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void updateItems() {
+        Log.d(TAG, "updateItems");
+
+        String query = QueryPreferences.getStoredQuery(getActivity());
+
+        new FetchItemsTask(query).execute();
+
+
+    }
 
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         final View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
+
+        progressBar = (ProgressBar) v.findViewById(R.id.progressBar);
+
+        //get data in background
+        updateItems();
+
+        Log.d(TAG, "onCreateView");
         mPhotoRecyclerView = v.findViewById(R.id.photo_recycler_view);
         //динамическое обновление кол-ва колонок в зависимости от ширины дисплея
         mPhotoRecyclerView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
@@ -86,20 +171,19 @@ public class PhotoGalleryFragment extends Fragment {
                 GridLayoutManager layoutManager = ((GridLayoutManager) mPhotoRecyclerView.getLayoutManager());
                 super.onScrolled(recyclerView, dx, dy);
                 //если сумма последней видимой позиции и всех видимых позиций больше общего количества позиций, то гружу следующую страницу
-                if (layoutManager.findLastVisibleItemPosition() + layoutManager.getChildCount() >= layoutManager.getItemCount()
-                        && loadingAvailable) {
+                if (layoutManager.findLastVisibleItemPosition() + layoutManager.getChildCount() >= layoutManager.getItemCount() && loadingAvailable) {
                     loadingAvailable = false;
-                    Log.i(TAG, "Last item of list");
-                    pageIncrement();
+                    //Log.d(TAG, "Last item of list");
+                    page++;
                     //Do fetch new data
-                    new FetchItemTask().execute();
+                    updateItems();
                 }
             }
-
 
         });
 
         setupAdapter();
+
         return v;
     }
 
@@ -151,9 +235,12 @@ public class PhotoGalleryFragment extends Fragment {
         @Override
         public void onBindViewHolder(PhotoHolder holder, int position) {
             GalleryItem item = mGalleryItem.get(position);
-            Drawable placeHolder = getResources().getDrawable(R.mipmap.no_image);
-            holder.bindDrawable(placeHolder);
+            //Drawable placeHolder = getResources().getDrawable(R.mipmap.no_image);
+
+            Log.d(TAG, "Position is: " + position);
+            //holder.bindDrawable(placeHolder);
             mThumbnailDownloader.queueThumbnail(holder, item.getmURL());
+
         }
 
         @Override
@@ -162,29 +249,55 @@ public class PhotoGalleryFragment extends Fragment {
         }
     }
 
-    private class FetchItemTask extends AsyncTask<Void, Void, List<GalleryItem>> {
+    private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>> {
+
+        private String mQuery;
+
+
+        public FetchItemsTask(String query) {
+            mQuery = query;
+            Log.d(TAG, "Fetch ItemTask constructor");
+        }
+
+        @Override
+        protected void onPreExecute() {
+
+            progressBar.setVisibility(View.VISIBLE);
+        }
+
 
         @Override
         protected List<GalleryItem> doInBackground(Void... voids) {
-            String query = "robots";
 
-            if (query == null){
-               return new FlickrFetchr().fetchRecentPhoto();
-            }else {
-               return new FlickrFetchr().searchPhotos(query);
+            Log.d(TAG, "Fetch ItemTask doInBackground");
+
+            if (mQuery == null) {
+                return new FlickrFetchr().fetchRecentPhoto();
+            } else {
+                return new FlickrFetchr().searchPhotos(mQuery);
             }
         }
 
         @Override
         protected void onPostExecute(List<GalleryItem> galleryItems) {
-            for (int i = 0; i < galleryItems.size(); i++){
+
+            Log.d(TAG, "Fetch ItemTask onPostExecute");
+
+            //mItems.clear();
+
+            for (int i = 0; i < galleryItems.size(); i++) {
                 GalleryItem item = galleryItems.get(i);
                 mItems.add(item);
-                mPhotoRecyclerView.getAdapter().notifyItemChanged(mItems.size()-1);
-                //new Thread(() -> downloadToCache(item.getmURL())).start();
+                mPhotoRecyclerView.getAdapter().notifyItemChanged(mItems.size() - 1);
+                //setupAdapter();
+                new Thread(() -> downloadToCache(item.getmURL())).start();
             }
 
+
             loadingAvailable = true;
+            progressBar.setVisibility(View.GONE);
+
+
         }
     }
 
@@ -193,18 +306,14 @@ public class PhotoGalleryFragment extends Fragment {
     public void onDestroy() {
         super.onDestroy();
         mThumbnailDownloader.quit();
-        Log.i(TAG, "Background thread destroyed");
-    }
-
-    private void pageIncrement() {
-        page++;
+        Log.d(TAG, "Background thread destroyed");
     }
 
     private String getPage() {
         return String.valueOf(page);
     }
 
-    private void downloadToCache (String url){
+    private void downloadToCache(String url) {
         try {
             if (url == null) {
                 return;
@@ -213,7 +322,7 @@ public class PhotoGalleryFragment extends Fragment {
                 byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(url);
                 Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
                 Cache.getInstance().getLru().put(url, bitmap);
-                Log.i(TAG, "Download to cache");
+                Log.d(TAG, "Download to cache");
             }
         } catch (IOException e) {
             e.printStackTrace();

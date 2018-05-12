@@ -10,7 +10,7 @@ public class Cache {
 
     private Cache() {
 
-        lru = new LruCache<Object, Bitmap>(10240);
+        lru = new LruCache<>(10240);
 
     }
 

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -7,10 +7,24 @@
     android:layout_height="match_parent"
     tools:context="com.fox.andrey.photogallery.PhotoGalleryActivity">
 
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxHeight="12dip"
+        android:minHeight="12dip"
+        android:visibility="visible"
+        android:indeterminate="true"
+        android:background="@color/colorPrimary"
+        style="?android:attr/progressBarStyleHorizontal"
+        />
+
     <android.support.v7.widget.RecyclerView
         android:id="@+id/photo_recycler_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context="com.fox.andrey.photogallery.PhotoGalleryActivity" />
+        tools:context="com.fox.andrey.photogallery.PhotoGalleryActivity"
+        android:layout_below="@+id/progressBar"
+        />
 
-</FrameLayout>
+</RelativeLayout>
