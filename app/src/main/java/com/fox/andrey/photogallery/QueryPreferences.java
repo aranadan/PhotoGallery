@@ -6,6 +6,8 @@ package com.fox.andrey.photogallery;
 public class QueryPreferences {
     //key for query
     private static final String PREF_SEARCH_QUERY = "searchQuery";
+    //константa для хранения идентификатора последней загруженной фотографии
+    private static final String PREF_LAST_RESULT_ID = "lastResultId";
 
 
     /*Получение ранее сохраненного значения сводится к простому вызову
@@ -26,5 +28,16 @@ Editor, чтобы эти изменения стали видимыми для 
 SharedPreferences. Метод apply() вносит изменения в память немедленно, а непосредственная запись в файл осуществляется в фоновом потоке.*/
     public static void setStoredQuery(Context context, String query) {
         PreferenceManager.getDefaultSharedPreferences(context).edit().putString(PREF_SEARCH_QUERY, query).apply();
+    }
+
+    public static String getLastResultId(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(PREF_LAST_RESULT_ID, null);
+    }
+    public static void setLastResultId(Context context, String lastResultId) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putString(PREF_LAST_RESULT_ID, lastResultId)
+                .apply();
     }
 }

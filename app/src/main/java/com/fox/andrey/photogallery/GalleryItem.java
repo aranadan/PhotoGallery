@@ -17,27 +17,27 @@ public class GalleryItem {
         return mCaption;
     }
 
-    public String getmCaption() {
+    public String getCaption() {
         return mCaption;
     }
 
-    public void setmCaption(String mCaption) {
+    public void setCaption(String mCaption) {
         this.mCaption = mCaption;
     }
 
-    public String getmId() {
+    public String getId() {
         return mId;
     }
 
-    public void setmId(String mId) {
+    public void setId(String mId) {
         this.mId = mId;
     }
 
-    public String getmURL() {
+    public String getURL() {
         return mURL;
     }
 
-    public void setmURL(String mURL) {
+    public void setURL(String mURL) {
         this.mURL = mURL;
     }
 }

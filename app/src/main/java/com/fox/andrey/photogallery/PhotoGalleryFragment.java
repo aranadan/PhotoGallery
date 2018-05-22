@@ -1,5 +1,6 @@
 package com.fox.andrey.photogallery;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
@@ -45,6 +46,8 @@ public class PhotoGalleryFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        PollService.setServiceAlarm(getActivity(), true);
 
 
         Log.d(TAG, "onCreate Fragment");
@@ -234,13 +237,18 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(PhotoHolder holder, int position) {
+
             GalleryItem item = mGalleryItem.get(position);
+
+            //получаю локальную картинку
             //Drawable placeHolder = getResources().getDrawable(R.mipmap.no_image);
 
-            Log.d(TAG, "Position is: " + position);
+            //установаливаю локальную картинку
             //holder.bindDrawable(placeHolder);
-            mThumbnailDownloader.queueThumbnail(holder, item.getmURL());
 
+            Log.d(TAG, "Position is: " + position);
+
+            mThumbnailDownloader.queueThumbnail(holder, item.getURL());
         }
 
         @Override
@@ -272,7 +280,7 @@ public class PhotoGalleryFragment extends Fragment {
             Log.d(TAG, "Fetch ItemTask doInBackground");
 
             if (mQuery == null) {
-                return new FlickrFetchr().fetchRecentPhoto();
+                return new FlickrFetchr().fetchRecentPhotos();
             } else {
                 return new FlickrFetchr().searchPhotos(mQuery);
             }
@@ -290,7 +298,7 @@ public class PhotoGalleryFragment extends Fragment {
                 mItems.add(item);
                 mPhotoRecyclerView.getAdapter().notifyItemChanged(mItems.size() - 1);
                 //setupAdapter();
-                new Thread(() -> downloadToCache(item.getmURL())).start();
+                new Thread(() -> downloadToCache(item.getURL())).start();
             }
 
 
