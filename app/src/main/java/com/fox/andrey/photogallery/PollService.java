@@ -2,12 +2,16 @@ package com.fox.andrey.photogallery;
 
 import android.app.AlarmManager;
 import android.app.IntentService;
+import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.net.ConnectivityManager;
 import android.os.SystemClock;
 import android.support.annotation.Nullable;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 
 import java.util.List;
@@ -15,7 +19,8 @@ import java.util.concurrent.TimeUnit;
 
 public class PollService extends IntentService {
     private static final String TAG = "PollService";
-    // 60 секунд
+
+    // 15 минут
     private static final long POLL_INTERVAL_MS = TimeUnit.MINUTES.toMillis(1);
 
     public PollService() {
@@ -28,7 +33,7 @@ public class PollService extends IntentService {
 
     /*Как сообщить AlarmManager, какие интенты нужно отправить? При помощи объекта PendingIntent. По сути, в объекте PendingIntent упаковывается пожелание:
     «Я хочу запустить PollService». Затем это пожелание отправляется другим компонентам системы, таким как AlarmManager.
-    Включите вPollServiceновый метод с именемsetServiceAlarm(Context,boolean),
+    в PollService новый метод с именем setServiceAlarm(Context,boolean),
     который включает и отключает сигнал за вас. Метод будет объявлен статическим; это делается для того, чтобы код сигнала размещался рядом с другим кодом
     PollService, с которым он связан, но мог вызываться и другими компонентами.
     Обычно включение и отключение должно осуществляться из интерфейсного кода
@@ -37,10 +42,8 @@ public class PollService extends IntentService {
         Intent i = PollService.newIntent(context);
 
         /*Метод получает
-четыре параметра: Context для отправки интента; код запроса, по которому этот
-объект PendingIntent отличается от других; отправляемый объект Intent и, нако554 Глава 28. Фоновые службы
-нец, набор флагов, управляющий процессом создания PendingIntent (вскоре мы
-используем один из них)*/
+        четыре параметра: Context для отправки интента; код запроса, по которому этот
+        объект PendingIntent отличается от других; отправляемый объект Intent и набор флагов, управляющий процессом создания PendingIntent*/
         PendingIntent pi = PendingIntent.getService(context, 0, i, 0);
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (isOn) {
@@ -50,6 +53,18 @@ public class PollService extends IntentService {
             alarmManager.cancel(pi);
             pi.cancel();
         }
+
+        //Запись настройки для хранения состояния сигнала
+        QueryPreferences.setAlarmOn(context, isOn);
+
+    }
+
+
+    public static boolean isServiceAlarmOn(Context context) {
+        Intent i = PollService.newIntent(context);
+        PendingIntent pi = PendingIntent
+                .getService(context, 0, i, PendingIntent.FLAG_NO_CREATE);  //PendingIntent.FLAG_NO_CREATE) Флаг говорит, что если объект PendingIntent не существует, то вместо его создания следует вернуть null
+        return pi != null;
     }
 
     @Override
@@ -58,6 +73,7 @@ public class PollService extends IntentService {
         if (!isNetworkAvailableAndConnected()) {
             return;
         }
+
         
         //Log.i(TAG, "Received an intent: " + intent);
         String query = QueryPreferences.getStoredQuery(this);
@@ -76,6 +92,27 @@ public class PollService extends IntentService {
             Log.i(TAG, "Got an old result: " + resultId);
         } else {
             Log.i(TAG, "Got a new result: " + resultId);
+
+            //Добавление оповещения
+            // Объект PendingIntent, передаваемый setContentIntent(PendingIntent), будет запускаться при нажатии пользователем на вашем оповещении на выдвижной панели.
+            Resources resources = getResources();
+            Intent i = PhotoGalleryActivity.newIntent(this);
+            PendingIntent pi = PendingIntent.getActivity(this, 0, i, 0);
+
+            Notification notification = new NotificationCompat.Builder(this)
+                    .setTicker(resources.getString(R.string.new_pictures_title))
+                    .setSmallIcon(android.R.drawable.ic_menu_report_image)
+                    .setContentTitle(resources.getString(R.string.new_pictures_title))
+                    .setContentText(resources.getString(R.string.new_pictures_text))
+                    .setContentIntent(pi)
+                    //с этим вызовом оповещение при нажатии также будет удаляться с выдвижной панели оповещений
+                    .setAutoCancel(true)
+                    .build();
+
+            NotificationManagerCompat notificationManager =
+                    NotificationManagerCompat.from(this);
+            notificationManager.notify(0, notification);
+            //конец оповещения
         }
         QueryPreferences.setLastResultId(this, resultId);
 
@@ -85,8 +122,7 @@ public class PollService extends IntentService {
         ConnectivityManager cm =
                 (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
         boolean isNetworkAvailable = cm.getActiveNetworkInfo() != null;
-        boolean isNetworkConnected = isNetworkAvailable &&
+        return isNetworkAvailable &&
                 cm.getActiveNetworkInfo().isConnected();
-        return isNetworkConnected;
     }
 }

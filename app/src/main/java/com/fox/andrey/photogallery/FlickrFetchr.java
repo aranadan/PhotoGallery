@@ -108,7 +108,7 @@ public class FlickrFetchr {
 
         JSONObject photosJsonObject = jsonBody.getJSONObject("photos");
         String photoJsonArray = photosJsonObject.getJSONArray("photo").toString();
-        //создаю тип данных дре преобразования из json в list<GalleryItem>
+        //создаю тип данных для преобразования из json в list<GalleryItem>
         Type type = new TypeToken<ArrayList<GalleryItem>>(){}.getType();
         List<GalleryItem> galleryItems = gson.fromJson(photoJsonArray,type);
         items.addAll(galleryItems);

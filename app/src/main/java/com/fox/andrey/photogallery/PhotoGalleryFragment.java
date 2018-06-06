@@ -1,11 +1,11 @@
 package com.fox.andrey.photogallery;
 
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.Nullable;
@@ -47,24 +47,20 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        PollService.setServiceAlarm(getActivity(), true);
-
-
         Log.d(TAG, "onCreate Fragment");
+
         //hold fragment
         setRetainInstance(true);
+
         //menu get callback
         setHasOptionsMenu(true);
 
 
         Handler responseHandler = new Handler();
         mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
-        mThumbnailDownloader.setThumbnailDownloaderListener(new ThumbnailDownloader.ThumbnailDownloaderListener<PhotoHolder>() {
-            @Override
-            public void onThumbnailDownloaded(PhotoHolder target, Bitmap thumbnail) {
-                Drawable drawable = new BitmapDrawable(getResources(), thumbnail);
-                target.bindDrawable(drawable);
-            }
+        mThumbnailDownloader.setThumbnailDownloaderListener((target, thumbnail) -> {
+            Drawable drawable = new BitmapDrawable(getResources(), thumbnail);
+            target.bindDrawable(drawable);
         });
         mThumbnailDownloader.start();
         mThumbnailDownloader.getLooper();
@@ -77,6 +73,7 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_photo_gallery, menu);
+
 
         MenuItem searchItem = menu.findItem(R.id.menu_item_search);
         SearchView searchView = (SearchView) searchItem.getActionView();
@@ -116,16 +113,52 @@ public class PhotoGalleryFragment extends Fragment {
 
 
         });
+
+
+        //Переключение текста элемента меню
+        MenuItem toggleItem = menu.findItem(R.id.menu_item_toggle_polling);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+
+
+            if (PollJobService.isSchedulerOn(getActivity())) {
+                toggleItem.setTitle(R.string.stop_polling);
+            } else {
+                toggleItem.setTitle(R.string.start_polling);
+            }
+        } else {
+            if (PollService.isServiceAlarmOn(getActivity())) {
+                toggleItem.setTitle(R.string.stop_polling);
+            } else {
+                toggleItem.setTitle(R.string.start_polling);
+            }
+        }
     }
 
     /*Каждый раз, когда пользователь выбирает элемент Clear Search в дополнительном
-    меню, стирайте сохраненный запрос (присваиванием ему null)*/
+    меню, стираем сохраненный запрос (присваиванием ему null)*/
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_item_clear:
                 QueryPreferences.setStoredQuery(getActivity(), null);
                 updateItems();
+                return true;
+            case R.id.menu_item_toggle_polling:
+                boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
+
+                // запускаю службу планировщика если API системы меньше 21 то использую AlarmManager иначе JobScheduler
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+
+                    //запускаю службу планировщика если еще не запущена
+                    PollJobService.startScheduler(getActivity(),QueryPreferences.isAlarmOn(getActivity()));
+                } else {
+                    PollService.setServiceAlarm(getActivity(), shouldStartAlarm);
+                }
+
+                // используется, чтобы сказать Android, что содержимое меню изменилось, и меню нужно перерисовать
+                getActivity().invalidateOptionsMenu();
+                Log.d("PollJobService", "Обновление интерфейса");
+
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -148,6 +181,7 @@ public class PhotoGalleryFragment extends Fragment {
         final View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
 
         progressBar = (ProgressBar) v.findViewById(R.id.progressBar);
+
 
         //get data in background
         updateItems();
