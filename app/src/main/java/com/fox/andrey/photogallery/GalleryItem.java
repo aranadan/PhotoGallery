@@ -1,6 +1,8 @@
 package com.fox.andrey.photogallery;
 
 
+import android.net.Uri;
+
 import com.google.gson.annotations.SerializedName;
 
 public class GalleryItem {
@@ -11,6 +13,23 @@ public class GalleryItem {
     private String mId;
     @SerializedName("url_s")
     private String mURL;
+    @SerializedName("owner")
+    private String mOwner;
+
+    public String getmOwner() {
+        return mOwner;
+    }
+
+    public void setmOwner(String mOwner) {
+        this.mOwner = mOwner;
+    }
+    public Uri getPhotoPageUri() {
+        return Uri.parse("https://www.flickr.com/photos/")
+                .buildUpon()
+                .appendPath(mOwner)
+                .appendPath(mId)
+                .build();
+    }
 
     @Override
     public String toString() {

@@ -1,5 +1,6 @@
 package com.fox.andrey.photogallery;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
@@ -24,6 +25,8 @@ import android.widget.ImageView;
 import android.support.v7.widget.SearchView;
 import android.widget.ProgressBar;
 
+import com.squareup.picasso.Picasso;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,10 +36,11 @@ public class PhotoGalleryFragment extends VisibleFragment {
     private static final String TAG = "PhotoGalleryFragment";
     private RecyclerView mPhotoRecyclerView;
     private List<GalleryItem> mItems = new ArrayList<>();
-    private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
+    //private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
     private ProgressBar progressBar;
     private boolean loadingAvailable = true;
     private static int page = 1;
+
 
 
     public static PhotoGalleryFragment newInstance() {
@@ -55,7 +59,7 @@ public class PhotoGalleryFragment extends VisibleFragment {
         //menu get callback
         setHasOptionsMenu(true);
 
-
+/*
         Handler responseHandler = new Handler();
         mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
         mThumbnailDownloader.setThumbnailDownloaderListener((target, thumbnail) -> {
@@ -64,7 +68,7 @@ public class PhotoGalleryFragment extends VisibleFragment {
         });
         mThumbnailDownloader.start();
         mThumbnailDownloader.getLooper();
-        Log.i(TAG, "Background thread started");
+        Log.i(TAG, "Background thread started");*/
 
 
     }
@@ -180,7 +184,7 @@ public class PhotoGalleryFragment extends VisibleFragment {
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         final View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
 
-        progressBar = (ProgressBar) v.findViewById(R.id.progressBar);
+        progressBar = v.findViewById(R.id.progressBar);
 
 
         //get data in background
@@ -227,7 +231,7 @@ public class PhotoGalleryFragment extends VisibleFragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        mThumbnailDownloader.clearQueue();
+        //mThumbnailDownloader.clearQueue();
 
     }
 
@@ -240,17 +244,34 @@ public class PhotoGalleryFragment extends VisibleFragment {
     }
 
 
-    private class PhotoHolder extends RecyclerView.ViewHolder {
+    private class PhotoHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
 
         private ImageView mImageView;
+        private GalleryItem mGalleryItem;
 
         public PhotoHolder(View itemView) {
             super(itemView);
-            mImageView = (ImageView) itemView.findViewById(R.id.item_image_view);
+            mImageView = itemView.findViewById(R.id.item_image_view);
+            itemView.setOnClickListener(this);
         }
 
-        public void bindDrawable(Drawable drawable) {
-            mImageView.setImageDrawable(drawable);
+        public void bindDrawable(String uri) {
+            //mImageView.setImageDrawable(drawable);
+
+            Picasso.get().load(mGalleryItem.getURL()).into(mImageView);
+        }
+
+        public void bindGalleryItem(GalleryItem galleryItem) {
+            mGalleryItem = galleryItem;
+        }
+        @Override
+        public void onClick(View v) {
+           /* Intent i = new Intent(Intent.ACTION_VIEW, mGalleryItem.
+                    getPhotoPageUri());*/
+            Intent i = PhotoPageActivity
+                    .newIntent(getActivity(), mGalleryItem.getPhotoPageUri());
+            Log.d(TAG, mGalleryItem.getPhotoPageUri().toString());
+            startActivity(i);
         }
     }
 
@@ -273,16 +294,14 @@ public class PhotoGalleryFragment extends VisibleFragment {
         public void onBindViewHolder(PhotoHolder holder, int position) {
 
             GalleryItem item = mGalleryItem.get(position);
+            holder.bindGalleryItem(item);
 
-            //получаю локальную картинку
-            //Drawable placeHolder = getResources().getDrawable(R.mipmap.no_image);
-
-            //установаливаю локальную картинку
-            //holder.bindDrawable(placeHolder);
+            //установаливаю картинку
+            holder.bindDrawable(item.getURL());
 
             Log.d(TAG, "Position is: " + position);
 
-            mThumbnailDownloader.queueThumbnail(holder, item.getURL());
+            //mThumbnailDownloader.queueThumbnail(holder, item.getURL());
         }
 
         @Override
@@ -326,14 +345,16 @@ public class PhotoGalleryFragment extends VisibleFragment {
             Log.d(TAG, "Fetch ItemTask onPostExecute");
 
             //mItems.clear();
+            mItems.addAll(galleryItems);
+            setupAdapter();
 
-            for (int i = 0; i < galleryItems.size(); i++) {
+            /*for (int i = 0; i < galleryItems.size(); i++) {
                 GalleryItem item = galleryItems.get(i);
                 mItems.add(item);
                 mPhotoRecyclerView.getAdapter().notifyItemChanged(mItems.size() - 1);
                 //setupAdapter();
                 new Thread(() -> downloadToCache(item.getURL())).start();
-            }
+            }*/
 
 
             loadingAvailable = true;
@@ -347,7 +368,7 @@ public class PhotoGalleryFragment extends VisibleFragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        mThumbnailDownloader.quit();
+        //mThumbnailDownloader.quit();
         Log.d(TAG, "Background thread destroyed");
     }
 

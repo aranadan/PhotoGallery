@@ -1,11 +1,12 @@
 package com.fox.andrey.photogallery;
 
 import android.app.Activity;
-import android.app.Fragment;
+
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.support.v4.app.Fragment;
 import android.util.Log;
 
 public abstract class VisibleFragment extends Fragment {
