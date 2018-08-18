@@ -1,5 +1,6 @@
 package com.fox.andrey.photogallery;
 
+import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.IntentService;
 import android.app.Notification;
@@ -22,6 +23,12 @@ public class PollService extends IntentService {
 
     // 15 минут
     private static final long POLL_INTERVAL_MS = TimeUnit.MINUTES.toMillis(1);
+
+    public static final String ACTION_SHOW_NOTIFICATION =
+            "com.fox.andrey.photogallery.SHOW_NOTIFICATION";
+    public static final String PERM_PRIVATE ="com.fox.andrey.photogallery.PRIVATE";
+    public static final String REQUEST_CODE = "REQUEST_CODE";
+    public static final String NOTIFICATION = "NOTIFICATION";
 
     public PollService() {
         super(TAG);
@@ -109,10 +116,17 @@ public class PollService extends IntentService {
                     .setAutoCancel(true)
                     .build();
 
-            NotificationManagerCompat notificationManager =
+           /* NotificationManagerCompat notificationManager =
                     NotificationManagerCompat.from(this);
             notificationManager.notify(0, notification);
             //конец оповещения
+
+            *//*В нашем случае широковещательная рассылка
+            будет применяться к определенному нами действию,
+            поэтому также следует определить константу действия*//*
+            sendBroadcast(new Intent(ACTION_SHOW_NOTIFICATION),PERM_PRIVATE);*/
+
+            showBackgroundNotification(0,notification);
         }
         QueryPreferences.setLastResultId(this, resultId);
 
@@ -124,5 +138,14 @@ public class PollService extends IntentService {
         boolean isNetworkAvailable = cm.getActiveNetworkInfo() != null;
         return isNetworkAvailable &&
                 cm.getActiveNetworkInfo().isConnected();
+    }
+
+    private void showBackgroundNotification(int requestCode, Notification notification)
+    {
+        Intent i = new Intent(ACTION_SHOW_NOTIFICATION);
+        i.putExtra(REQUEST_CODE, requestCode);
+        i.putExtra(NOTIFICATION, notification);
+        sendOrderedBroadcast(i, PERM_PRIVATE, null, null,
+                Activity.RESULT_OK, null, null);
     }
 }

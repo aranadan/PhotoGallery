@@ -2,9 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.fox.andrey.photogallery">
 
+    <!--В этой разметке мы определяем собственное разрешение с уровнем защиты
+    signature-->
+    <permission android:name="com.fox.andrey.photogallery.PRIVATE"
+        android:protectionLevel="signature" />
+
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="com.fox.andrey.photogallery.PRIVATE" />
 
     <application
         android:allowBackup="true"
@@ -36,6 +42,18 @@
             <!--будет прослушивать действие BOOT_COMPLETED-->
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
+
+        <!--Чтобы NotificationReceiver получал рассылку после динамически зарегистрированного приемника
+        (чтобы он мог проверить, нужно ли передавать оповещение NotificationManager),
+         ему нужно назначить низкий приоритет –999 (значения –1000 и ниже зарезервированы).-->
+        <receiver android:name=".NotificationReceiver"
+            android:exported="false">
+            <intent-filter android:priority="-999">
+                <action
+                    android:name="com.bignerdranch.android.photogallery.SHOW_NOTIFICATION"
+                    />
             </intent-filter>
         </receiver>
     </application>
