@@ -28,7 +28,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
     private ThumbnailDownloaderListener<T> mThumbnailDownloaderListener;
 
     public interface ThumbnailDownloaderListener<T> {
-        void onThumbnailDownloaded(T target, Bitmap thumbnail);
+        void onThumbnailDownloaded(T target);
     }
 
     public void setThumbnailDownloaderListener(ThumbnailDownloaderListener<T> listener) {
@@ -82,13 +82,13 @@ public class ThumbnailDownloader<T> extends HandlerThread {
 
     private void handleRequest(final T target) {
 
-        try {
-            final String url = mRequestMap.get(target);
-            final Bitmap bitmap;
-            if (url == null) {
-                return;
-            }
-            if (Cache.getInstance().getLru().get(url) == null) {
+        final String url = mRequestMap.get(target);
+        final Bitmap bitmap;
+        if (url == null) {
+            return;
+        }
+
+            /*if (Cache.getInstance().getLru().get(url) == null) {
                 byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(url);
                 bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
                 Cache.getInstance().getLru().put(url, bitmap);
@@ -96,22 +96,19 @@ public class ThumbnailDownloader<T> extends HandlerThread {
             }else{
                 bitmap = Cache.getInstance().getLru().get(url);
                 Log.i(TAG, "Download from cache");
-            }
-            //run new thread in UI because handler create in main thread
-            mResponseHandler.post(new Runnable() {
-                @Override
-                public void run() {
+            }*/
+        //run new thread in UI because handler create in main thread
+        mResponseHandler.post(new Runnable() {
+            @Override
+            public void run() {
 
-                    if (mRequestMap.get(target) != url || mHasQuit) {
-                        return;
-                    }
-                    mRequestMap.remove(target);
-                    //send objects to PhotoGalleryFragment
-                    mThumbnailDownloaderListener.onThumbnailDownloaded(target, bitmap);
+                if (mRequestMap.get(target) != url || mHasQuit) {
+                    return;
                 }
-            });
-        } catch (IOException e) {
-            Log.e(TAG, "Error downloading image", e);
-        }
+                mRequestMap.remove(target);
+                //send objects to PhotoGalleryFragment
+                mThumbnailDownloaderListener.onThumbnailDownloaded(target);
+            }
+        });
     }
 }

@@ -1,16 +1,9 @@
 package com.fox.andrey.photogallery;
 
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.annotation.Nullable;
-import android.support.v4.app.Fragment;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -27,7 +20,6 @@ import android.widget.ProgressBar;
 
 import com.squareup.picasso.Picasso;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,7 +31,14 @@ public class PhotoGalleryFragment extends VisibleFragment {
     //private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
     private ProgressBar progressBar;
     private boolean loadingAvailable = true;
-    private static int page = 1;
+
+
+
+    private static int PAGE = 1;
+
+    public static void setPage(int page) {
+        PhotoGalleryFragment.PAGE = page;
+    }
 
 
 
@@ -59,18 +58,6 @@ public class PhotoGalleryFragment extends VisibleFragment {
         //menu get callback
         setHasOptionsMenu(true);
 
-/*
-        Handler responseHandler = new Handler();
-        mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
-        mThumbnailDownloader.setThumbnailDownloaderListener((target, thumbnail) -> {
-            Drawable drawable = new BitmapDrawable(getResources(), thumbnail);
-            target.bindDrawable(drawable);
-        });
-        mThumbnailDownloader.start();
-        mThumbnailDownloader.getLooper();
-        Log.i(TAG, "Background thread started");*/
-
-
     }
 
     @Override
@@ -87,7 +74,7 @@ public class PhotoGalleryFragment extends VisibleFragment {
             public boolean onQueryTextSubmit(String query) {
                 Log.d(TAG, "QueryTextSubmit " + query);
                 QueryPreferences.setStoredQuery(getActivity(), query);
-                updateItems();
+
                 searchView.setIconified(true);
                 searchView.clearFocus();
 
@@ -95,7 +82,8 @@ public class PhotoGalleryFragment extends VisibleFragment {
                 //progressBar.setVisibility(ProgressBar.VISIBLE);
 
                 //удаляю данные по старому запросу
-                mItems.clear();
+                resetItemsAndPage();
+                updateItems();
 
                 //оповещаю адаптер
                 mPhotoRecyclerView.getAdapter().notifyDataSetChanged();
@@ -121,21 +109,19 @@ public class PhotoGalleryFragment extends VisibleFragment {
 
         //Переключение текста элемента меню
         MenuItem toggleItem = menu.findItem(R.id.menu_item_toggle_polling);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
 
 
-            if (PollJobService.isSchedulerOn(getActivity())) {
-                toggleItem.setTitle(R.string.stop_polling);
-            } else {
-                toggleItem.setTitle(R.string.start_polling);
-            }
-        } else {
             if (PollService.isServiceAlarmOn(getActivity())) {
                 toggleItem.setTitle(R.string.stop_polling);
             } else {
                 toggleItem.setTitle(R.string.start_polling);
             }
-        }
+
+    }
+
+    private void resetItemsAndPage() {
+        mItems.clear();
+        PAGE = 1;
     }
 
     /*Каждый раз, когда пользователь выбирает элемент Clear Search в дополнительном
@@ -145,19 +131,16 @@ public class PhotoGalleryFragment extends VisibleFragment {
         switch (item.getItemId()) {
             case R.id.menu_item_clear:
                 QueryPreferences.setStoredQuery(getActivity(), null);
+                resetItemsAndPage();
                 updateItems();
                 return true;
             case R.id.menu_item_toggle_polling:
                 boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
 
-                // запускаю службу планировщика если API системы меньше 21 то использую AlarmManager иначе JobScheduler
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                // запускаю службу планировщика  AlarmManager
 
-                    //запускаю службу планировщика если еще не запущена
-                    PollJobService.startScheduler(getActivity(),QueryPreferences.isAlarmOn(getActivity()));
-                } else {
                     PollService.setServiceAlarm(getActivity(), shouldStartAlarm);
-                }
+
 
                 // используется, чтобы сказать Android, что содержимое меню изменилось, и меню нужно перерисовать
                 getActivity().invalidateOptionsMenu();
@@ -184,7 +167,7 @@ public class PhotoGalleryFragment extends VisibleFragment {
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         final View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
 
-        progressBar = v.findViewById(R.id.progressBar);
+        progressBar = v.findViewById(R.id.progress_bar);
 
 
         //get data in background
@@ -215,7 +198,8 @@ public class PhotoGalleryFragment extends VisibleFragment {
                 if (layoutManager.findLastVisibleItemPosition() + layoutManager.getChildCount() >= layoutManager.getItemCount() && loadingAvailable) {
                     loadingAvailable = false;
                     //Log.d(TAG, "Last item of list");
-                    page++;
+                    PAGE++;
+                    Log.d(TAG, "Page is " + PAGE);
                     //Do fetch new data
                     updateItems();
                 }
@@ -232,7 +216,6 @@ public class PhotoGalleryFragment extends VisibleFragment {
     public void onDestroyView() {
         super.onDestroyView();
         //mThumbnailDownloader.clearQueue();
-
     }
 
 
@@ -256,8 +239,6 @@ public class PhotoGalleryFragment extends VisibleFragment {
         }
 
         public void bindDrawable(String uri) {
-            //mImageView.setImageDrawable(drawable);
-
             Picasso.get().load(mGalleryItem.getURL()).into(mImageView);
         }
 
@@ -295,13 +276,10 @@ public class PhotoGalleryFragment extends VisibleFragment {
 
             GalleryItem item = mGalleryItem.get(position);
             holder.bindGalleryItem(item);
+            Log.d(TAG, "Position is: " + position + " and ID is: " + item.getId());
 
             //установаливаю картинку
             holder.bindDrawable(item.getURL());
-
-            Log.d(TAG, "Position is: " + position);
-
-            //mThumbnailDownloader.queueThumbnail(holder, item.getURL());
         }
 
         @Override
@@ -322,7 +300,6 @@ public class PhotoGalleryFragment extends VisibleFragment {
 
         @Override
         protected void onPreExecute() {
-
             progressBar.setVisibility(View.VISIBLE);
         }
 
@@ -345,17 +322,13 @@ public class PhotoGalleryFragment extends VisibleFragment {
             Log.d(TAG, "Fetch ItemTask onPostExecute");
 
             //mItems.clear();
-            mItems.addAll(galleryItems);
-            setupAdapter();
+            //mItems.addAll(galleryItems);
+            //setupAdapter();
+           for (GalleryItem item : galleryItems){
 
-            /*for (int i = 0; i < galleryItems.size(); i++) {
-                GalleryItem item = galleryItems.get(i);
-                mItems.add(item);
-                mPhotoRecyclerView.getAdapter().notifyItemChanged(mItems.size() - 1);
-                //setupAdapter();
-                new Thread(() -> downloadToCache(item.getURL())).start();
-            }*/
-
+               mItems.add(item);
+               mPhotoRecyclerView.getAdapter().notifyItemChanged(mItems.size() - 1);
+           }
 
             loadingAvailable = true;
             progressBar.setVisibility(View.GONE);
@@ -372,11 +345,11 @@ public class PhotoGalleryFragment extends VisibleFragment {
         Log.d(TAG, "Background thread destroyed");
     }
 
-    private String getPage() {
-        return String.valueOf(page);
+    public static String getPAGE() {
+        return String.valueOf(PAGE);
     }
 
-    private void downloadToCache(String url) {
+    /*private void downloadToCache(String url) {
         try {
             if (url == null) {
                 return;
@@ -390,5 +363,5 @@ public class PhotoGalleryFragment extends VisibleFragment {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
+    }*/
 }

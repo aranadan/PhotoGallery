@@ -26,7 +26,15 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".PhotoPageActivity"/>
+
+        <!-- android:configChanges
+        Атрибут сообщает, что в случае изменения конфигурации из-за открытия или закрытия клавиатуры,
+        изменения ориентации или размеров экрана (которое также происходит при переключении между книжной
+        и альбомной ориентацией в Android после версии 3.2) активность должна обрабатывать изменения самостоятельно.
+         -->
+        <activity
+            android:name=".PhotoPageActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize" />
 
         <service android:name=".PollService" />
 
@@ -34,10 +42,6 @@
         Экспортирование открывает доступ к службе, а добавление разрешения снова
         ограничивает его, так что служба может запускаться только JobScheduler.
         -->
-        <service
-            android:name=".PollJobService"
-            android:exported="true"
-            android:permission="android.permission.BIND_JOB_SERVICE" />
         <!--Регистрация автономного приемника -->
         <receiver android:name=".StartupReceiver">
             <!--будет прослушивать действие BOOT_COMPLETED-->

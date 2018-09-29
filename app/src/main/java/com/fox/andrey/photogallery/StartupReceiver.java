@@ -19,14 +19,10 @@ public class StartupReceiver extends BroadcastReceiver {
         // Включение сигнала при загрузке
         boolean isOn = QueryPreferences.isAlarmOn(context);
         Log.i(TAG, "isAlarmOn: " + isOn);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            Log.d(TAG, intent.getAction() + " for LOLLIPOP");
-            if (isOn) {
-                PollJobService.startScheduler(context,isOn);
-            }
-        } else {
+
+
             PollService.setServiceAlarm(context, isOn);
-        }
+
 
     }
 }

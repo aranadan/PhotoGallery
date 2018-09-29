@@ -17,26 +17,31 @@ import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class FlickrFetchr {
+    public static Map<Long, GalleryItem> itemMap;
     private static final String TAG = "FlickrFetchr";
     private static final String API_KEY = "75ec99e963baeaa6cd8f389f92a545cb";
     private static final String FETCH_RECENTS_METHOD = "flickr.photos.getRecent";
     private static final String SEARCH_METHOD = "flickr.photos.search";
-    private static int page = 1;
-    private static final Uri ENDPOINT = Uri.parse("https://api.flickr.com/services/rest")
-            .buildUpon()
-            .appendQueryParameter("api_key",API_KEY)
-            .appendQueryParameter("page","1")
-            .appendQueryParameter("format","json")
-            .appendQueryParameter("nojsoncallback",getPage())
-            .appendQueryParameter("extras","url_s")
-            .build();
 
-    public static String getPage() {
-        return String.valueOf(page);
+
+    private Uri getEndpointUri (){
+        Uri endpoint = Uri.parse("https://api.flickr.com/services/rest")
+                .buildUpon()
+                .appendQueryParameter("api_key",API_KEY)
+                .appendQueryParameter("page", PhotoGalleryFragment.getPAGE())
+                .appendQueryParameter("format","json")
+                .appendQueryParameter("nojsoncallback", "1")
+                .appendQueryParameter("extras","url_s")
+                .build();
+        return endpoint;
     }
+
+
 
     public byte[] getUrlBytes(String urlSpec) throws IOException {
         URL url = new URL(urlSpec);
@@ -67,6 +72,7 @@ public class FlickrFetchr {
     }
 
     public List<GalleryItem> fetchRecentPhotos(){
+
         String url = buildUrl(FETCH_RECENTS_METHOD,null);
         return downloadGalleryItem(url);
     }
@@ -78,6 +84,7 @@ public class FlickrFetchr {
 
     public List<GalleryItem> downloadGalleryItem(String url){
         List<GalleryItem> items = new ArrayList<>();
+        Log.d(TAG, url);
 
         try{
             String jsonString = getUrlString(url);
@@ -94,7 +101,7 @@ public class FlickrFetchr {
     }
 
     private String buildUrl(String method, String query){
-        Uri.Builder uriBuilder = ENDPOINT.buildUpon()
+        Uri.Builder uriBuilder = getEndpointUri().buildUpon()
                 .appendQueryParameter("method", method);
 
         if (method.equals(SEARCH_METHOD)){
@@ -108,12 +115,25 @@ public class FlickrFetchr {
 
         JSONObject photosJsonObject = jsonBody.getJSONObject("photos");
         String photoJsonArray = photosJsonObject.getJSONArray("photo").toString();
+
         //создаю тип данных для преобразования из json в list<GalleryItem>
         Type type = new TypeToken<ArrayList<GalleryItem>>(){}.getType();
         List<GalleryItem> galleryItems = gson.fromJson(photoJsonArray,type);
+        itemMap = new HashMap<>();
+
+        //попытка удалить дубли
+        /*for (GalleryItem item : galleryItems) {
+            long key = Long.valueOf(item.getId());
+            try {
+                itemMap.put(key, item);
+            }catch (NullPointerException e){
+                e.printStackTrace();
+            }
+        }*/
+
         items.addAll(galleryItems);
-        }
-
-
     }
+
+
+}
 
