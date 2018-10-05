@@ -121,16 +121,6 @@ public class FlickrFetchr {
         List<GalleryItem> galleryItems = gson.fromJson(photoJsonArray,type);
         itemMap = new HashMap<>();
 
-        //попытка удалить дубли
-        /*for (GalleryItem item : galleryItems) {
-            long key = Long.valueOf(item.getId());
-            try {
-                itemMap.put(key, item);
-            }catch (NullPointerException e){
-                e.printStackTrace();
-            }
-        }*/
-
         items.addAll(galleryItems);
     }
 

@@ -5,6 +5,8 @@ import android.net.Uri;
 
 import com.google.gson.annotations.SerializedName;
 
+import java.util.concurrent.Callable;
+
 public class GalleryItem {
     // использовать аннотации, чтобы помочь библиотеке разобраться с полями класса, если они не совпадают с нужным именем в json.
     @SerializedName("title")
@@ -59,4 +61,6 @@ public class GalleryItem {
     public void setURL(String mURL) {
         this.mURL = mURL;
     }
+
+
 }

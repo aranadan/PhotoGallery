@@ -23,6 +23,11 @@ import com.squareup.picasso.Picasso;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.reactivex.Observable;
+import io.reactivex.Scheduler;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.schedulers.Schedulers;
+
 
 public class PhotoGalleryFragment extends VisibleFragment {
     private static final String TAG = "PhotoGalleryFragment";
@@ -154,12 +159,8 @@ public class PhotoGalleryFragment extends VisibleFragment {
 
     private void updateItems() {
         Log.d(TAG, "updateItems");
-
         String query = QueryPreferences.getStoredQuery(getActivity());
-
         new FetchItemsTask(query).execute();
-
-
     }
 
     @Nullable
